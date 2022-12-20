@@ -1,0 +1,4 @@
+seq_len: 20
+NTH_FRAME: 2
+learning_rate: 0.0020619312667867285
+inner_dims: [148, 43, 5, 8, 92] 
