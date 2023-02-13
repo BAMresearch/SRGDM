@@ -23,4 +23,5 @@ If you find this code useful, please cite our paper:
 ```
 
 The GMRF implementation is originally from https://github.com/MAPIRlab/gmrf_gas_mapping. 
+
 The Kernel DM+V implementation is originally from https://gitlab.com/smueller18/TDKernelDMVW.
