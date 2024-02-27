@@ -1,10 +1,21 @@
-import natsort
 import os
-import numpy as np
 import torch
 from torch.utils import data
 import torchvision.transforms as transforms
 import pytorch_lightning as pl
+
+class AddGaussianNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        tensor = tensor + torch.randn(tensor.size()) * self.std + self.mean
+        tensor = torch.clamp(tensor, min=0) # set minimum to 0 (important for gmrf)
+        return tensor
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
 class GasDataSet(data.Dataset):   
@@ -14,14 +25,19 @@ class GasDataSet(data.Dataset):
         X - Masked gas distribution data of length `seq_len` of time step T and the preceeding time steps.
         y - Gas distribution of time step T.
     """
-    def __init__(self, root, seq_len=1, nth_frame=2, sliding_step=1):
+    def __init__(self, root, seq_len=1, nth_frame=2, sliding_step=1, noise=False):
         self.root = root
         self.seq_len = seq_len        # how many time steps shall be predicted
-        
+        self.noise = noise
+
         # Load the data. The data tensor is structured: [n_sources, n_images, height, width]
         # n_sources ->  individual simulations of sources
         # n_images  ->  images of each simulation run 
         x = torch.load(root)        
+
+        n_timesteps = x.shape[2]
+        x = x.reshape(-1,n_timesteps,30,25)
+
         # Select only the images that we care about (ruled by nth frame)
         idxs = torch.tensor(range(x.shape[1])[::nth_frame])
         x = torch.index_select(x, 1, idxs)
@@ -53,11 +69,16 @@ class GasDataSet(data.Dataset):
             for col in range(int(n/2), mask.shape[1], n):
                 mask[row, col] = 1
         self.mask = mask.repeat(seq_len,1,1,1)
-        
+
         self.transform = transforms.Compose([
                         transforms.RandomVerticalFlip(),
                         transforms.RandomHorizontalFlip(),
                         ])
+        
+        if self.noise == True:
+            self.apply_noise = AddGaussianNoise(std=0.05)
+
+    
     def downsample(self, X):
         downsampled = torch.zeros(self.seq_len,6,5)
         n = 5
@@ -68,7 +89,7 @@ class GasDataSet(data.Dataset):
         return downsampled
         
     def __len__(self):
-        return len(self.data)#-self.seq_len
+        return len(self.data)
             
     def __getitem__(self, idx):
         sample = self.data[idx]
@@ -77,33 +98,32 @@ class GasDataSet(data.Dataset):
         sample = self.transform(sample)
 
         # Remove channel dimension and add channel dimension before&after downsample
-        X = self.downsample(sample.squeeze(1)).unsqueeze(1)
+        X = self.downsample(sample.squeeze(1))#.unsqueeze(0)
+        if self.noise==True:
+            X = self.apply_noise(X)
         y = sample[-1]
             
         return X, y
     
 
 class GasDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size, seq_len=1, nth_frame=2, sliding_step=1,  num_workers=0):
+    def __init__(self, data_dir, batch_size, seq_len=1, nth_frame=2, sliding_step=1,  num_workers=0, noise=False):
         super().__init__()
         self.seq_len = seq_len
         self.nth_frame = nth_frame
         self.batch_size = batch_size
         self.sliding_step = sliding_step
         self.num_workers = num_workers
-        self.train_dir = os.path.join(data_dir, 'train.pt')
-        self.val_dir = os.path.join(data_dir, 'valid.pt')
+        self.train_dir = os.path.join(data_dir, 'trainvalid.pt')
         self.test_dir = os.path.join(data_dir, 'test.pt')
+        self.noise = noise
         
     def setup(self, stage = None):
         self.train_set = GasDataSet(self.train_dir, 
                                         seq_len=self.seq_len, 
                                         nth_frame=self.nth_frame,
-                                        sliding_step=self.sliding_step)
-        self.val_set = GasDataSet(self.val_dir, 
-                                      seq_len=self.seq_len, 
-                                      nth_frame=self.nth_frame,
-                                      sliding_step=self.sliding_step)
+                                        sliding_step=self.sliding_step,
+                                        noise=self.noise)
         self.test_set = GasDataSet(self.test_dir, 
                                       seq_len=self.seq_len, 
                                       nth_frame=self.nth_frame,
@@ -112,8 +132,6 @@ class GasDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return data.DataLoader(self.train_set, batch_size=self.batch_size, shuffle=True, drop_last=True, num_workers=self.num_workers)
     
-    def val_dataloader(self):
-        return data.DataLoader(self.val_set, batch_size=self.batch_size, shuffle=False, drop_last=True, num_workers=self.num_workers)
     
     def test_dataloader(self):
         return data.DataLoader(self.test_set, batch_size=self.batch_size, shuffle=False, drop_last=True, num_workers=self.num_workers)
