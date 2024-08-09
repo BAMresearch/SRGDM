@@ -2,7 +2,7 @@
 
 ## Introduction
 ![Architecture of Network](images/architecture.png)
-This repository contains the code for our paper **Super-Resolution for Gas Distribution Mapping**, in which we provide:
+This repository contains the code for our paper [**Super-resolution for Gas Distribution Mapping**](https://www.sciencedirect.com/science/article/pii/S0925400524009973), in which we provide:
 
 1. Gas Distribution Decoder (GDD): A CNN-based **method for spatiotemporal interpolation** of spatially sparse sensor measurements.
 2. An extensive **dataset of synthetic gas distribution maps based on actual airflow measurements**. As generating ground truth maps is nearly impossible, this dataset provides a valuable resource for researchers in this field. It is available online, along with the code for our neural network model. 
@@ -27,12 +27,15 @@ Please contact us either via Github or via mro[at]bam.de
 
 If you find this code useful, please cite our paper:
 ```
-@inproceedings{winkler2022super,
-  title={Super-Resolution for Gas Distribution Mapping: Convolutional Encoder-Decoder Network},
-  author={Winkler, Nicolas P and Matsukura, Haruka and Neumann, Patrick P and Schaffernicht, Erik and Ishida, Hiroshi and Lilienthal, Achim J},
-  booktitle={2022 IEEE International Symposium on Olfaction and Electronic Nose (ISOEN)},
-  pages={1--3},
-  year={2022},
-  organization={IEEE}
+@article{winkler2024super,
+  title = {Super-resolution for Gas Distribution Mapping},
+  journal = {Sensors and Actuators B: Chemical},
+  volume = {419},
+  pages = {136267},
+  year = {2024},
+  issn = {0925-4005},
+  doi = {https://doi.org/10.1016/j.snb.2024.136267},
+  url = {https://www.sciencedirect.com/science/article/pii/S0925400524009973},
+  author = {Nicolas P. Winkler and Oleksandr Kotlyar and Erik Schaffernicht and Haruka Matsukura and Hiroshi Ishida and Patrick P. Neumann and Achim J. Lilienthal},
 }
 ```
